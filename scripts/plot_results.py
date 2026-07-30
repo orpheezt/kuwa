@@ -210,5 +210,92 @@ def plot(
             plot_single(data, str(output_path), metric)
 
 
+@app.command()
+def list(
+    after: str = typer.Option(None, "--after", help="Show runs after ISO datetime"),
+    before: str = typer.Option(None, "--before", help="Show runs before ISO datetime"),
+    limit: int = typer.Option(None, "--limit", help="Max number of runs to show"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON array"),
+) -> None:
+    runs_dir = PROJECT_ROOT / "out" / "runs"
+    if not runs_dir.is_dir():
+        print("No runs directory", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    entries = []
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir() or d.name == "latest":
+            continue
+        events_path = d / "run_events.jsonl"
+        results_path = d / "data" / "benchmark_results.json"
+
+        status = "unknown"
+        started_at = None
+        events = []
+        if events_path.exists():
+            with open(events_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    ev = json.loads(line)
+                    events.append(ev)
+                    if ev["event"] == "started":
+                        started_at = ev["timestamp"]
+            if events:
+                last_event = events[-1]["event"]
+                if last_event == "complete":
+                    status = "complete"
+                elif last_event == "interrupted":
+                    status = "interrupted"
+                else:
+                    status = "in_progress"
+
+        metadata = {}
+        if results_path.exists():
+            with open(results_path) as f:
+                payload = json.load(f)
+                metadata = payload.get("metadata", {})
+
+        ts = started_at or metadata.get("timestamp")
+        if ts is None:
+            continue
+
+        if after is not None and ts < after:
+            continue
+        if before is not None and ts > before:
+            continue
+
+        entries.append(
+            {
+                "timestamp": ts,
+                "run_id": d.name,
+                "status": status,
+                "name": metadata.get("benchmark_name"),
+                "images": metadata.get("images", []),
+                "kernel_sizes": metadata.get("kernel_sizes", []),
+                "num_backends": len(metadata.get("backends", [])),
+            }
+        )
+
+    entries.sort(key=lambda e: e["timestamp"], reverse=True)
+    if limit is not None:
+        entries = entries[:limit]
+
+    if json_output:
+        print(json.dumps(entries, indent=2))
+    else:
+        header = f"{'TIMESTAMP':<32} {'RUN_ID':<38} {'STATUS':<14} {'NAME':<20} {'IMAGES':<8} {'BACKENDS':<9}"
+        print(header)
+        print("-" * len(header))
+        for e in entries:
+            name = e["name"] or "(none)"
+            num_img = str(len(e["images"]))
+            num_be = str(e["num_backends"])
+            print(
+                f"{e['timestamp']:<32} {e['run_id']:<38} {e['status']:<14} {name:<20} {num_img:<8} {num_be:<9}"
+            )
+
+
 if __name__ == "__main__":
     app()

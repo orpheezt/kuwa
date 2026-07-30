@@ -73,11 +73,17 @@ export-jax: $(GENERATED) sync
 export: export-torch export-jax
 
 bench-sweep: sync
-	uv run scripts/run_benchmarks.py --image $(IMG) --kernel-sizes $(KERNEL_SIZES)
+	uv run scripts/run_benchmarks.py
 
 bench-plot: sync
 	uv run scripts/plot_results.py --metric timing
 	uv run scripts/plot_results.py --metric flops
+
+bench-list:
+	uv run scripts/plot_results.py list
+
+bench-resume:
+	uv run scripts/run_benchmarks.py --resume
 
 bench-report: bench-sweep bench-plot
 

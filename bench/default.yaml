@@ -1,0 +1,16 @@
+name: "default"
+images:
+  - "assets/cowboy.jpg"
+kernel_sizes: [3, 5, 7, 9, 11, 15, 21, 31]
+warmup: 3
+runs: 10
+backends:
+  - dir: "kuwahara-torch"
+    cmd: "bench-torch"
+    variants: ["eager", "inductor", "turbine_cpu"]
+  - dir: "kuwahara-numba"
+    cmd: "bench-numba"
+    variants: ["default"]
+  - dir: "kuwahara-jax"
+    cmd: "bench-jax"
+    variants: ["default"]
