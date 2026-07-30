@@ -3,8 +3,6 @@
 # requires-python = ">=3.14"
 # dependencies = ["typer>=0.27.0", "pyyaml>=6.0.3"]
 # ///
-from __future__ import annotations
-
 import json
 import subprocess
 import sys

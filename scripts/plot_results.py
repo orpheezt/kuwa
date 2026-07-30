@@ -3,8 +3,6 @@
 # requires-python = ">=3.14"
 # dependencies = ["typer>=0.27.0", "matplotlib>=3.11.1"]
 # ///
-from __future__ import annotations
-
 import json
 import sys
 from collections import defaultdict
