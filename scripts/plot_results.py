@@ -208,8 +208,8 @@ def plot(
             plot_single(data, str(output_path), metric)
 
 
-@app.command()
-def list(
+@app.command(name="list")
+def list_runs(
     after: str = typer.Option(None, "--after", help="Show runs after ISO datetime"),
     before: str = typer.Option(None, "--before", help="Show runs before ISO datetime"),
     limit: int = typer.Option(None, "--limit", help="Max number of runs to show"),

@@ -76,8 +76,8 @@ bench-sweep: sync
 	uv run scripts/run_benchmarks.py
 
 bench-plot: sync
-	uv run scripts/plot_results.py --metric timing
-	uv run scripts/plot_results.py --metric flops
+	uv run scripts/plot_results.py plot --metric timing
+	uv run scripts/plot_results.py plot --metric flops
 
 bench-list:
 	uv run scripts/plot_results.py list
