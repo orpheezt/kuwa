@@ -106,17 +106,16 @@ def plot_multi(
             for e in entries
         ]
 
-        if metric == "timing":
-            if error == "std":
+        match (metric, error):
+            case ("timing", "std"):
                 err = [e["timing_ms"]["std"] for e in entries]
-            elif error == "ci":
+            case ("timing", "ci"):
                 err = [(e["ci_95"][1] - e["ci_95"][0]) / 2 for e in entries]
-            else:
+            case ("timing", _):
                 err = None
-        else:
-            if error == "none":
+            case (_, "none"):
                 err = None
-            else:
+            case _:
                 lower = [
                     e["flops"]["gflops"] - e["flops"]["gflops_lo"] for e in entries
                 ]
