@@ -33,7 +33,7 @@ def run_bench(
     warmup: int,
     runs: int,
     save_output_dir: str | None = None,
-) -> dict:
+) -> dict | None:
     cmd_args = [
         "uv",
         "run",
@@ -53,7 +53,14 @@ def run_bench(
     ]
     if save_output_dir is not None:
         cmd_args.extend(["--save-output-dir", save_output_dir])
-    result = subprocess.run(cmd_args, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(cmd_args, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        if "Unknown variant" in e.stderr:
+            print(f"  Skipping {variant} (not available)", file=sys.stderr)
+            return None
+        print(e.stderr, file=sys.stderr)
+        raise
     return json.loads(result.stdout)
 
 
@@ -97,7 +104,8 @@ def run(
                     runs,
                     save_output_dir=str(images_dir),
                 )
-                results.append(data)
+                if data is not None:
+                    results.append(data)
 
     payload = {
         "metadata": {

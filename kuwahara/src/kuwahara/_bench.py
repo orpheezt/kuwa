@@ -9,6 +9,25 @@ from PIL import Image
 from ._protocol import KuwaharaFilter
 
 
+def _count_kuwahara_flops(
+    height: int, width: int, kernel_size: int, channels: int = 3
+) -> int:
+    r = (kernel_size - 1) // 2
+    s = r + 1
+    H, W, C = height, width, channels
+
+    flops = (3 + C) * H * W
+
+    for _ in range(4):
+        flops += 2 * H * W * s * s
+        flops += (H + r) * (W + r)
+        flops += 2 * H * W * s * s
+        flops += 2 * H * W
+        flops += 2 * C * H * W * s * s
+
+    return flops
+
+
 def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Typer:
     app = typer.Typer()
     variant_names = list(variants.keys())
@@ -61,6 +80,12 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
         lo = mean - 1.96 * std / np.sqrt(runs)
         hi = mean + 1.96 * std / np.sqrt(runs)
 
+        h, w, c = img.shape
+        total_flops = _count_kuwahara_flops(h, w, kernel_size, c)
+        gflops = total_flops / (mean * 1e9)
+        gflops_lo = total_flops / (hi * 1e9) if hi > 0 else 0.0
+        gflops_hi = total_flops / (lo * 1e9) if lo > 0 else 0.0
+
         if save_output_dir is not None:
             out_path = Path(save_output_dir)
             out_path.mkdir(parents=True, exist_ok=True)
@@ -86,6 +111,12 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
                     round(lo * 1000, 4),
                     round(hi * 1000, 4),
                 ],
+                "flops": {
+                    "total": total_flops,
+                    "gflops": round(gflops, 4),
+                    "gflops_lo": round(gflops_lo, 4),
+                    "gflops_hi": round(gflops_hi, 4),
+                },
             }
             print(json.dumps(data))
         else:
@@ -97,5 +128,6 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
             print(f"  Min:  {samples.min() * 1000:8.2f} ms")
             print(f"  Max:  {samples.max() * 1000:8.2f} ms")
             print(f"  95% CI: [{lo * 1000:8.2f}, {hi * 1000:8.2f}] ms")
+            print(f"  GFLOPS: {gflops:8.2f}")
 
     return app
