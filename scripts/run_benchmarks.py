@@ -15,7 +15,7 @@ from pathlib import Path
 import typer
 
 BACKENDS = [
-    ("kuwahara-torch", "bench-torch", ["eager", "inductor"]),
+    ("kuwahara-torch", "bench-torch", ["eager", "inductor", "turbine_cpu"]),
     ("kuwahara-numba", "bench-numba", ["default"]),
     ("kuwahara-jax", "bench-jax", ["default"]),
 ]

@@ -58,7 +58,7 @@ bench-numba:
 bench-jax:
 	uv run --directory kuwahara-jax bench-jax $(IMG)
 
-bench: bench-torch-eager bench-torch-compile bench-numba bench-jax
+bench: bench-torch-eager bench-torch-compile bench-torch-turbine-cpu bench-numba bench-jax
 
 export-torch: $(GENERATED)
 	uv run --directory kuwahara-torch export-torch --kernel-size 35 --output $(GENERATED)/torch
@@ -107,6 +107,21 @@ typecheck:
 		uv run --directory $$p ty check src; \
 	done
 
+purge:
+	@for p in $(PROJECTS); do \
+		rm -rf $$p/.venv; \
+	done
+
+lock:
+	@for p in $(PROJECTS); do \
+		uv lock --directory $$p; \
+	done
+
+sync:
+	@for p in $(PROJECTS); do \
+		uv sync --directory $$p; \
+	done
+
 check: format lint typecheck
 
-.PHONY: help bench bench-torch bench-torch-eager bench-torch-compile bench-torch-turbine-cpu bench-numba bench-jax bench-sweep bench-plot bench-report export export-torch export-jax list-backends list-inductor-backends format lint typecheck check
+.PHONY: help bench bench-torch bench-torch-eager bench-torch-compile bench-torch-turbine-cpu bench-numba bench-jax bench-sweep bench-plot bench-report export export-torch export-jax list-backends list-inductor-backends format lint typecheck purge lock sync check
