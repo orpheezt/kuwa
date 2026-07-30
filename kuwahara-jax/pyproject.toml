@@ -1,0 +1,26 @@
+[project]
+name = "kuwahara-jax"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "flatbuffers>=25.12.19",
+    "jax>=0.11.0",
+    "kuwahara",
+]
+
+[project.scripts]
+bench-jax = "kuwahara_jax:app"
+export-jax = "kuwahara_jax:export_app"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+kuwahara = { path = "../kuwahara", editable = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+    "ty>=0.0.65",
+]

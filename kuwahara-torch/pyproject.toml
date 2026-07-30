@@ -1,0 +1,35 @@
+[project]
+name = "kuwahara-torch"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "kuwahara",
+    "torch>=2.13.0",
+]
+
+[project.scripts]
+bench-torch = "kuwahara_torch:app"
+export-torch = "kuwahara_torch:export_app"
+list-inductor-backends = "kuwahara_torch:list_inductor_backends"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+kuwahara = { path = "../kuwahara", editable = true }
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+    "ty>=0.0.65",
+]
+
+[project.optional-dependencies]
+turbine = ["iree-turbine>=3.9.0"]
