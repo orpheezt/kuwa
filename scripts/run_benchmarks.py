@@ -128,6 +128,11 @@ def run(
         "--runs",
         help="Number of timed runs (overrides config)",
     ),
+    project: str = typer.Option(
+        None,
+        "--project",
+        help="Filter backends by project dir (comma-separated, overrides config)",
+    ),
     resume: str = typer.Option(
         None,
         "--resume",
@@ -152,6 +157,13 @@ def run(
     if runs is None:
         runs = cfg.get("runs", 10)
     backends = [(b["dir"], b["cmd"], b["variants"]) for b in cfg["backends"]]
+
+    if project is not None:
+        project_dirs = set(project.split(","))
+        backends = [b for b in backends if b[0] in project_dirs]
+        if not backends:
+            print(f"No matching backends for --project {project}", file=sys.stderr)
+            raise typer.Exit(code=1)
 
     if resume is not None:
         resume_id = "latest" if resume == "latest" else resume
