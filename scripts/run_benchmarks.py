@@ -7,7 +7,7 @@ import json
 import subprocess
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -233,7 +233,7 @@ def run(
             events_path,
             {
                 "event": "started",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
         completed = set()
@@ -249,7 +249,7 @@ def run(
             events_path,
             {
                 "event": "resumed",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -266,7 +266,6 @@ def run(
         )
 
     results = list(existing_results)
-    total = len(image_list) * len(ks_list) * sum(len(v) for _, _, v in backends)
 
     try:
         for img in image_list:
@@ -297,7 +296,7 @@ def run(
                                 events_path,
                                 {
                                     "event": "result",
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "timestamp": datetime.now(UTC).isoformat(),
                                     "image": img,
                                     "backend": backend_dir,
                                     "variant": variant,
@@ -307,7 +306,7 @@ def run(
                             payload = {
                                 "metadata": {
                                     "run_id": run_dir.name,
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "timestamp": datetime.now(UTC).isoformat(),
                                     "benchmark_name": benchmark_name,
                                     "config_path": str(config_path),
                                     "images": image_list,
@@ -329,7 +328,7 @@ def run(
             events_path,
             {
                 "event": "complete",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
         print(f"Completed {run_dir.name}", file=sys.stderr)
@@ -339,14 +338,14 @@ def run(
             events_path,
             {
                 "event": "interrupted",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
         if results:
             payload = {
                 "metadata": {
                     "run_id": run_dir.name,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "benchmark_name": benchmark_name,
                     "config_path": str(config_path),
                     "images": image_list,
