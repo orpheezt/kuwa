@@ -1,0 +1,16 @@
+name: "big-kernel"
+images:
+  - "assets/cowboy.jpg"
+kernel_sizes: [55, 75, 95]
+warmup: 3
+runs: 3
+backends:
+  - dir: "kuwahara-torch"
+    cmd: "bench-torch"
+    variants: ["eager", "inductor", "turbine_cpu"]
+  - dir: "kuwahara-numba"
+    cmd: "bench-numba"
+    variants: ["default"]
+  - dir: "kuwahara-jax"
+    cmd: "bench-jax"
+    variants: ["default"]
