@@ -21,9 +21,7 @@ help:
 	@echo "    TURBINE=1        Include turbine_cpu variant (installs iree-turbine)"
 	@echo ""
 	@echo "Export targets:"
-	@echo "  export         Export all models"
-	@echo "  export-torch   Export PyTorch model"
-	@echo "  export-jax     Export JAX model"
+	@echo "  export         Export models"
 	@echo ""
 	@echo "  Variables:"
 	@echo "    PROJECT=<dir>    Filter by project dir (e.g., kuwahara-torch)"
@@ -65,12 +63,6 @@ export: sync
 		uv run --directory kuwahara-torch export-torch --kernel-size 35 --output $(GENERATED)/torch)
 	$(if $(or $(filter undefined,$(origin PROJECT)),$(filter kuwahara-jax,$(PROJECT))),\
 		uv run --directory kuwahara-jax export-jax --kernel-size 35 --output $(GENERATED)/jax)
-
-export-torch: $(GENERATED) sync
-	uv run --directory kuwahara-torch export-torch --kernel-size 35 --output $(GENERATED)/torch
-
-export-jax: $(GENERATED) sync
-	uv run --directory kuwahara-jax export-jax --kernel-size 35 --output $(GENERATED)/jax
 
 list-inductor-backends: sync
 	uv run --directory kuwahara-torch list-inductor-backends
@@ -117,4 +109,4 @@ sync:
 
 check: format lint typecheck
 
-.PHONY: help bench bench-run bench-plot bench-list export export-torch export-jax list-backends list-inductor-backends format lint typecheck purge lock sync check
+.PHONY: help bench bench-run bench-plot bench-list export list-backends list-inductor-backends format lint typecheck purge lock sync check
