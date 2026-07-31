@@ -43,6 +43,9 @@ help:
 	@echo "  lint           Lint all sources"
 	@echo "  typecheck      Type-check all sources"
 	@echo "  check          Format + lint + typecheck"
+	@echo ""
+	@echo "  Variables:"
+	@echo "    FIX=1          Auto-fix issues on lint/typecheck"
 
 $(GENERATED):
 	mkdir -p $@
@@ -101,7 +104,7 @@ lint:
 
 typecheck:
 	@for p in $(PROJECTS); do \
-		uv run --directory $$p ty check src; \
+		uv run --directory $$p ty check$(if $(FIX), --fix,) src; \
 	done
 
 purge:
