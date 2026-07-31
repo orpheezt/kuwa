@@ -50,9 +50,9 @@ def export_model(
     torch.export.save(exported, out_dir / "kuwahara.pt2")
 
     try:
-        import iree.turbine.aot as aot
+        from iree.turbine import aot
 
-        export_output = aot.export(module, x)
+        export_output = aot.export(module, args=(x,))
         (out_dir / "kuwahara.mlir").write_text(str(export_output.mlir_module))
     except ImportError:
         pass

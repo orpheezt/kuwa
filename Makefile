@@ -33,6 +33,7 @@ help:
 	@echo ""
 	@echo "  Variables:"
 	@echo "    PROJECT=<dir>    Filter by project dir (e.g., kuwahara-torch)"
+	@echo "    TURBINE=1        Include turbine MLIR export (installs iree-turbine)"
 	@echo ""
 	@echo "Query targets:"
 	@echo "  list-backends         List all backends and variants"

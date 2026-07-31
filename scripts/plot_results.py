@@ -7,6 +7,7 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import Annotated
 
 import matplotlib
 
@@ -51,10 +52,8 @@ def plot_single(data: dict, output: str, metric: str) -> None:
 
     if metric == "timing":
         ax.set_ylabel("Time (ms)")
-        unit = "ms"
     else:
         ax.set_ylabel("GFLOPS")
-        unit = "GFLOPS"
 
     ax.set_title(f"{backend}  kernel_size={ks}")
     ax.grid(axis="y", alpha=0.3)
@@ -165,26 +164,33 @@ def _resolve_run_dir(run_id: str | None) -> Path:
 
 @app.command()
 def plot(
-    run_id: str = typer.Option(
-        None, "--run-id", help="Specific run ID (default: latest)"
-    ),
-    input: str = typer.Option(
-        None,
-        "--input",
-        help="Input JSON file (default: <run>/data/benchmark_results.json)",
-    ),
-    output: str = typer.Option(
-        None,
-        "--output",
-        help="Output image path (default: <run>/plot/benchmark_plot_<metric>.png)",
-    ),
-    log_scale: bool = typer.Option(False, "--log-scale", help="Log scale y-axis"),
-    error: str = typer.Option(
-        "std", "--error", help="Error bar type: std, ci, or none"
-    ),
-    metric: str = typer.Option(
-        "timing", "--metric", help="Metric to plot: timing or flops"
-    ),
+    run_id: Annotated[
+        str | None,
+        typer.Option("--run-id", help="Specific run ID (default: latest)"),
+    ] = None,
+    input: Annotated[
+        str | None,
+        typer.Option(
+            "--input",
+            help="Input JSON file (default: <run>/data/benchmark_results.json)",
+        ),
+    ] = None,
+    output: Annotated[
+        str | None,
+        typer.Option(
+            "--output",
+            help="Output image path (default: <run>/plot/benchmark_plot_<metric>.png)",
+        ),
+    ] = None,
+    log_scale: Annotated[
+        bool, typer.Option("--log-scale", help="Log scale y-axis")
+    ] = False,
+    error: Annotated[
+        str, typer.Option("--error", help="Error bar type: std, ci, or none")
+    ] = "std",
+    metric: Annotated[
+        str, typer.Option("--metric", help="Metric to plot: timing or flops")
+    ] = "timing",
 ) -> None:
     run_dir = _resolve_run_dir(run_id)
     input_path = Path(input) if input else run_dir / "data" / "benchmark_results.json"
@@ -210,10 +216,18 @@ def plot(
 
 @app.command(name="list")
 def list_runs(
-    after: str = typer.Option(None, "--after", help="Show runs after ISO datetime"),
-    before: str = typer.Option(None, "--before", help="Show runs before ISO datetime"),
-    limit: int = typer.Option(None, "--limit", help="Max number of runs to show"),
-    json_output: bool = typer.Option(False, "--json", help="Output as JSON array"),
+    after: Annotated[
+        str | None, typer.Option("--after", help="Show runs after ISO datetime")
+    ] = None,
+    before: Annotated[
+        str | None, typer.Option("--before", help="Show runs before ISO datetime")
+    ] = None,
+    limit: Annotated[
+        int | None, typer.Option("--limit", help="Max number of runs to show")
+    ] = None,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output as JSON array")
+    ] = False,
 ) -> None:
     runs_dir = PROJECT_ROOT / "out" / "runs"
     if not runs_dir.is_dir():

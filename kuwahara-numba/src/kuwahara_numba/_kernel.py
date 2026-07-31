@@ -1,9 +1,18 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numba import njit, prange
+from numba import njit
+
+if TYPE_CHECKING:
+    prange = range
+else:
+    from numba import prange
 
 
 @njit(parallel=True, fastmath=True)
-def kuwahara_filter_numba(img: np.ndarray, kernel_sz: int = 5) -> np.ndarray:
+def kuwahara_filter_numba(image: np.ndarray, kernel_size: int = 5) -> np.ndarray:
+    img = image
+    kernel_sz = kernel_size
     if kernel_sz % 2 == 0 or kernel_sz < 3:
         raise ValueError("kernel_size must be an odd integer >= 3")
 

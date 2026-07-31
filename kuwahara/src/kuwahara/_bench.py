@@ -1,6 +1,7 @@
 import json
 import time
 from pathlib import Path
+from typing import Annotated
 
 import numpy as np
 import typer
@@ -34,21 +35,25 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
 
     @app.command()
     def run(
-        image: str = typer.Argument(..., help="Path to input image"),
-        kernel_size: int = typer.Option(5, help="Kernel size (odd, >=3)"),
-        warmup: int = typer.Option(3, help="Number of warmup runs"),
-        runs: int = typer.Option(10, help="Number of timed runs"),
-        variant: str = typer.Option(
-            variant_names[0],
-            help=f"Variant to run: {', '.join(variant_names)}",
-        ),
-        json_output: bool = typer.Option(False, "--json", help="Output JSON"),
-        list_variants: bool = typer.Option(
-            False, "--list-variants", help="List available variants and exit"
-        ),
-        save_output_dir: str = typer.Option(
-            None, "--save-output-dir", help="Directory to save output image"
-        ),
+        image: Annotated[str, typer.Argument(help="Path to input image")],
+        kernel_size: Annotated[int, typer.Option(help="Kernel size (odd, >=3)")] = 5,
+        warmup: Annotated[int, typer.Option(help="Number of warmup runs")] = 3,
+        runs: Annotated[int, typer.Option(help="Number of timed runs")] = 10,
+        variant: Annotated[
+            str,
+            typer.Option(help=f"Variant to run: {', '.join(variant_names)}"),
+        ] = variant_names[0],
+        json_output: Annotated[
+            bool, typer.Option("--json", help="Output JSON")
+        ] = False,
+        list_variants: Annotated[
+            bool,
+            typer.Option("--list-variants", help="List available variants and exit"),
+        ] = False,
+        save_output_dir: Annotated[
+            str | None,
+            typer.Option("--save-output-dir", help="Directory to save output image"),
+        ] = None,
     ):
         if list_variants:
             print(f"Available variants for {name}: {', '.join(variant_names)}")

@@ -9,6 +9,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated
 
 import typer
 import yaml
@@ -134,47 +135,63 @@ def _load_config(config_path: Path) -> dict:
 
 @app.command()
 def run(
-    config: str = typer.Option(
-        str(DEFAULT_CONFIG),
-        "--config",
-        "-c",
-        help="Path to YAML benchmark config",
-    ),
-    images: str = typer.Option(
-        None,
-        "--images",
-        help="Comma-separated image paths (overrides config)",
-    ),
-    kernel_sizes: str = typer.Option(
-        None,
-        "--kernel-sizes",
-        help="Comma-separated kernel sizes (overrides config)",
-    ),
-    warmup: int = typer.Option(
-        None,
-        "--warmup",
-        help="Number of warmup runs (overrides config)",
-    ),
-    runs: int = typer.Option(
-        None,
-        "--runs",
-        help="Number of timed runs (overrides config)",
-    ),
-    project: str = typer.Option(
-        None,
-        "--project",
-        help="Filter backends by project dir (comma-separated, overrides config)",
-    ),
-    new: bool = typer.Option(
-        False,
-        "--new",
-        help="Start a new run instead of resuming",
-    ),
-    resume: str = typer.Option(
-        None,
-        "--resume",
-        help="Resume a previous run (run ID or 'latest')",
-    ),
+    config: Annotated[
+        str,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Path to YAML benchmark config",
+        ),
+    ] = str(DEFAULT_CONFIG),
+    images: Annotated[
+        str | None,
+        typer.Option(
+            "--images",
+            help="Comma-separated image paths (overrides config)",
+        ),
+    ] = None,
+    kernel_sizes: Annotated[
+        str | None,
+        typer.Option(
+            "--kernel-sizes",
+            help="Comma-separated kernel sizes (overrides config)",
+        ),
+    ] = None,
+    warmup: Annotated[
+        int | None,
+        typer.Option(
+            "--warmup",
+            help="Number of warmup runs (overrides config)",
+        ),
+    ] = None,
+    runs: Annotated[
+        int | None,
+        typer.Option(
+            "--runs",
+            help="Number of timed runs (overrides config)",
+        ),
+    ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option(
+            "--project",
+            help="Filter backends by project dir (comma-separated, overrides config)",
+        ),
+    ] = None,
+    new: Annotated[
+        bool,
+        typer.Option(
+            "--new",
+            help="Start a new run instead of resuming",
+        ),
+    ] = False,
+    resume: Annotated[
+        str | None,
+        typer.Option(
+            "--resume",
+            help="Resume a previous run (run ID or 'latest')",
+        ),
+    ] = None,
 ) -> None:
     config_path = Path(config).resolve()
     cfg = _load_config(config_path)

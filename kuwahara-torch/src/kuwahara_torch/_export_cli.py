@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import typer
 from kuwahara import Dtype
 
@@ -8,11 +10,11 @@ app = typer.Typer()
 
 @app.command()
 def export(
-    height: int = typer.Option(512, "--height"),
-    width: int = typer.Option(512, "--width"),
-    channels: int = typer.Option(3, "--channels"),
-    kernel_size: int = typer.Option(5, "--kernel-size"),
-    output: str = typer.Option("out/generated/torch", "--output"),
-    dtype: Dtype = typer.Option(Dtype.FLOAT32, "--dtype"),
+    height: Annotated[int, typer.Option("--height")] = 512,
+    width: Annotated[int, typer.Option("--width")] = 512,
+    channels: Annotated[int, typer.Option("--channels")] = 3,
+    kernel_size: Annotated[int, typer.Option("--kernel-size")] = 5,
+    output: Annotated[str, typer.Option("--output")] = "out/generated/torch",
+    dtype: Annotated[Dtype, typer.Option("--dtype")] = Dtype.FLOAT32,
 ):
     export_model(height, width, channels, kernel_size, output, dtype)
