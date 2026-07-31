@@ -21,9 +21,12 @@ help:
 	@echo "    TURBINE=1        Include turbine_cpu variant (installs iree-turbine)"
 	@echo ""
 	@echo "Export targets:"
-	@echo "  export         Export all backends (torch + jax)"
-	@echo "  export-torch   Export PyTorch model via torch.export"
-	@echo "  export-jax     Export JAX model via jax.export"
+	@echo "  export         Export all models"
+	@echo "  export-torch   Export PyTorch model"
+	@echo "  export-jax     Export JAX model"
+	@echo ""
+	@echo "  Variables:"
+	@echo "    PROJECT=<dir>    Filter by project dir (e.g., kuwahara-torch)"
 	@echo ""
 	@echo "Query targets:"
 	@echo "  list-backends         List all backends and variants"
@@ -57,13 +60,17 @@ bench-plot: sync
 bench-list:
 	uv run scripts/plot_results.py list
 
+export: sync
+	$(if $(or $(filter undefined,$(origin PROJECT)),$(filter kuwahara-torch,$(PROJECT))),\
+		uv run --directory kuwahara-torch export-torch --kernel-size 35 --output $(GENERATED)/torch)
+	$(if $(or $(filter undefined,$(origin PROJECT)),$(filter kuwahara-jax,$(PROJECT))),\
+		uv run --directory kuwahara-jax export-jax --kernel-size 35 --output $(GENERATED)/jax)
+
 export-torch: $(GENERATED) sync
 	uv run --directory kuwahara-torch export-torch --kernel-size 35 --output $(GENERATED)/torch
 
 export-jax: $(GENERATED) sync
 	uv run --directory kuwahara-jax export-jax --kernel-size 35 --output $(GENERATED)/jax
-
-export: export-torch export-jax
 
 list-inductor-backends: sync
 	uv run --directory kuwahara-torch list-inductor-backends
