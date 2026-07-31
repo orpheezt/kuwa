@@ -1,0 +1,291 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECTS=("kuwahara" "kuwahara-torch" "kuwahara-numba" "kuwahara-jax")
+OUT_DIR="${OUT_DIR:-$PWD/out}"
+GENERATED="$OUT_DIR/generated"
+
+show_help() {
+    cat << 'EOF'
+Usage: ./kuwa.sh <command> [options]
+
+BENCHMARK COMMANDS:
+  bench [options]         Run benchmark sweep then plot timing & flops
+  bench-run [options]     Run benchmark sweep only
+    Options for bench / bench-run:
+      --project <name>    Filter by project (kuwahara-torch, kuwahara-jax, etc.)
+      --config <path>     Benchmark YAML config (default: bench/default.yaml)
+      --new               Start a fresh run instead of resuming
+      --resume [id]       Resume a specific run ID (or latest)
+      --turbine           Include turbine_cpu variant
+
+  bench-plot              Plot latest benchmark results
+  bench-list              List all previous benchmark runs
+
+EXPORT COMMANDS:
+  export [options]        Export models to generated output directory
+    Options for export:
+      --project <name>    Filter export by project
+      --turbine           Include turbine MLIR export
+      --kernel-size <n>   Set kernel size (default: 35)
+
+DEVELOPMENT & CODE QUALITY:
+  check [options]         Run format, lint, and typecheck sequentially
+  format [options]        Auto-format sources using ruff
+  lint [options]          Lint sources using ruff
+  typecheck [options]     Type-check sources using ty
+    Options for format / lint / typecheck / check:
+      --fix               Auto-fix issues where supported
+      --project <name>    Run checks on a specific project directory only
+
+DEPENDENCY & ENVIRONMENT:
+  sync [options]          Sync uv environments across projects
+    Options for sync:
+      --turbine           Include turbine extras for kuwahara-torch
+
+  lock                    Lock dependencies across all projects
+  purge                   Remove all .venv virtual environments
+
+QUERY COMMANDS:
+  list-backends           List all backends and variants
+  list-inductor-backends  List torch inductor backend variants
+EOF
+}
+
+sync_envs() {
+    local turbine=false
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --turbine) turbine=true; shift ;;
+            *) shift ;;
+        esac
+    done
+
+    local torch_extras=""
+    if [[ "$turbine" == true ]]; then
+        torch_extras="--extra turbine"
+    fi
+
+    echo "==> Syncing dependencies..."
+    uv sync --directory kuwahara-torch $torch_extras
+    uv sync --directory kuwahara-numba
+    uv sync --directory kuwahara-jax
+}
+
+cmd="${1:-help}"
+shift 1 2>/dev/null || true
+
+case "$cmd" in
+    help|-h|--help)
+        show_help
+        ;;
+
+    sync)
+        sync_envs "$@"
+        ;;
+
+    bench|bench-run)
+        config="bench/default.yaml"
+        project=""
+        new=false
+        resume=""
+        turbine=false
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --config) config="$2"; shift 2 ;;
+                --project) project="$2"; shift 2 ;;
+                --new) new=true; shift ;;
+                --resume)
+                    if [[ $# -gt 1 && "$2" != --* ]]; then
+                        resume="$2"
+                        shift 2
+                    else
+                        resume="latest"
+                        shift
+                    fi
+                    ;;
+                --turbine) turbine=true; shift ;;
+                *) echo "Unknown option for bench: $1"; exit 1 ;;
+            esac
+        done
+
+        sync_args=()
+        if [[ "$turbine" == true ]]; then sync_args+=("--turbine"); fi
+        sync_envs "${sync_args[@]}"
+
+        bench_args=()
+        if [[ -n "$config" ]]; then bench_args+=("--config" "$config"); fi
+        if [[ -n "$project" ]]; then bench_args+=("--project" "$project"); fi
+        if [[ "$new" == true ]]; then bench_args+=("--new"); fi
+        if [[ -n "$resume" ]]; then bench_args+=("--resume" "$resume"); fi
+
+        echo "==> Running benchmark sweep..."
+        uv run scripts/run_benchmarks.py "${bench_args[@]}"
+
+        if [[ "$cmd" == "bench" ]]; then
+            echo "==> Plotting results..."
+            uv run scripts/plot_results.py plot --metric timing
+            uv run scripts/plot_results.py plot --metric flops
+        fi
+        ;;
+
+    bench-plot)
+        sync_envs "$@"
+        echo "==> Plotting benchmark results..."
+        uv run scripts/plot_results.py plot --metric timing
+        uv run scripts/plot_results.py plot --metric flops
+        ;;
+
+    bench-list)
+        uv run scripts/plot_results.py list
+        ;;
+
+    export)
+        project=""
+        turbine=false
+        kernel_size=35
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --project) project="$2"; shift 2 ;;
+                --turbine) turbine=true; shift ;;
+                --kernel-size) kernel_size="$2"; shift 2 ;;
+                *) echo "Unknown option for export: $1"; exit 1 ;;
+            esac
+        done
+
+        sync_args=()
+        if [[ "$turbine" == true ]]; then sync_args+=("--turbine"); fi
+        sync_envs "${sync_args[@]}"
+
+        mkdir -p "$GENERATED"
+
+        if [[ -z "$project" || "$project" == "kuwahara-torch" ]]; then
+            echo "==> Exporting kuwahara-torch..."
+            uv run --directory kuwahara-torch export-torch --kernel-size "$kernel_size" --output "$GENERATED/torch"
+        fi
+
+        if [[ -z "$project" || "$project" == "kuwahara-jax" ]]; then
+            echo "==> Exporting kuwahara-jax..."
+            uv run --directory kuwahara-jax export-jax --kernel-size "$kernel_size" --output "$GENERATED/jax"
+        fi
+        ;;
+
+    list-inductor-backends)
+        sync_envs "$@"
+        uv run --directory kuwahara-torch list-inductor-backends
+        ;;
+
+    list-backends)
+        sync_envs "$@"
+        echo "=== kuwahara-torch ==="
+        uv run --directory kuwahara-torch list-inductor-backends
+        echo ""
+        echo "=== kuwahara-jax ==="
+        uv run --directory kuwahara-jax bench-jax --list-variants
+        echo ""
+        echo "=== kuwahara-numba ==="
+        uv run --directory kuwahara-numba bench-numba --list-variants
+        ;;
+
+    format)
+        target_projects=("${PROJECTS[@]}")
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --project) target_projects=("$2"); shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        for p in "${target_projects[@]}"; do
+            echo "==> Formatting $p"
+            uv run --directory "$p" ruff format src
+        done
+        ;;
+
+    lint)
+        fix_flag=()
+        target_projects=("${PROJECTS[@]}")
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --fix) fix_flag+=("--fix"); shift ;;
+                --project) target_projects=("$2"); shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        for p in "${target_projects[@]}"; do
+            echo "==> Linting $p"
+            uv run --directory "$p" ruff check "${fix_flag[@]}" src
+        done
+        ;;
+
+    typecheck)
+        fix_flag=()
+        target_projects=("${PROJECTS[@]}")
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --fix) fix_flag+=("--fix"); shift ;;
+                --project) target_projects=("$2"); shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        for p in "${target_projects[@]}"; do
+            echo "==> Typechecking $p"
+            uv run --directory "$p" ty check "${fix_flag[@]}" src
+        done
+        ;;
+
+    check)
+        fix_flag=()
+        target_projects=("${PROJECTS[@]}")
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --fix) fix_flag+=("--fix"); shift ;;
+                --project) target_projects=("$2"); shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        format_args=()
+        lint_args=("${fix_flag[@]}")
+        typecheck_args=("${fix_flag[@]}")
+
+        if [[ "${#target_projects[@]}" -eq 1 ]]; then
+            format_args+=("--project" "${target_projects[0]}")
+            lint_args+=("--project" "${target_projects[0]}")
+            typecheck_args+=("--project" "${target_projects[0]}")
+        fi
+
+        "$0" format "${format_args[@]}"
+        "$0" lint "${lint_args[@]}"
+        "$0" typecheck "${typecheck_args[@]}"
+        ;;
+
+    lock)
+        for p in "${PROJECTS[@]}"; do
+            echo "==> Locking $p"
+            uv lock --directory "$p"
+        done
+        ;;
+
+    purge)
+        for p in "${PROJECTS[@]}"; do
+            echo "==> Purging $p/.venv"
+            rm -rf "$p/.venv"
+        done
+        ;;
+
+    *)
+        echo "Unknown command: $cmd"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac

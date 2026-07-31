@@ -35,7 +35,7 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
 
     @app.command()
     def run(
-        image: Annotated[str, typer.Argument(help="Path to input image")],
+        image: Annotated[str | None, typer.Argument(help="Path to input image")] = None,
         kernel_size: Annotated[int, typer.Option(help="Kernel size (odd, >=3)")] = 5,
         warmup: Annotated[int, typer.Option(help="Number of warmup runs")] = 3,
         runs: Annotated[int, typer.Option(help="Number of timed runs")] = 10,
@@ -58,6 +58,10 @@ def make_bench_app(variants: dict[str, KuwaharaFilter], name: str) -> typer.Type
         if list_variants:
             print(f"Available variants for {name}: {', '.join(variant_names)}")
             raise typer.Exit()
+
+        if image is None:
+            typer.echo("Error: Missing argument 'IMAGE'.", err=True)
+            raise typer.Exit(code=2)
 
         if variant not in variants:
             valid = ", ".join(variant_names)
