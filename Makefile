@@ -1,5 +1,11 @@
 PROJECTS     = kuwahara kuwahara-torch kuwahara-numba kuwahara-jax
 TURBINE     ?=
+RESUME      ?=
+NEW         ?=
+CONFIG      ?= bench/default.yaml
+ifneq ($(filter NEW,$(MAKECMDGOALS)),)
+NEW := 1
+endif
 TORCH_EXTRAS = $(if $(TURBINE),--extra turbine,)
 OUT_DIR     ?= $(PWD)/out
 GENERATED    = $(OUT_DIR)/generated
@@ -17,7 +23,9 @@ help:
 	@echo ""
 	@echo "  Variables:"
 	@echo "    PROJECT=<dir>    Filter backends by project dir (e.g., kuwahara-torch)"
-	@echo "    RESUME=<id>      Resume a previous run (omit id to resume latest)"
+	@echo "    RESUME=<id>      Resume a specific previous run (default: resume latest)"
+	@echo "    NEW=1            Start a fresh run instead of resuming"
+	@echo "    CONFIG=<path>    Benchmark YAML config (default: bench/default.yaml)"
 	@echo "    TURBINE=1        Include turbine_cpu variant (installs iree-turbine)"
 	@echo ""
 	@echo "Export targets:"
@@ -41,19 +49,23 @@ $(GENERATED):
 
 bench: sync
 	uv run scripts/run_benchmarks.py \
+		$(if $(CONFIG),--config $(CONFIG),) \
 		$(if $(PROJECT),--project $(PROJECT),) \
+		$(if $(NEW),--new,) \
 		$(if $(RESUME),--resume $(RESUME),)
-	uv run scripts/plot_results.py --metric timing
-	uv run scripts/plot_results.py --metric flops
+	uv run scripts/plot_results.py plot --metric timing
+	uv run scripts/plot_results.py plot --metric flops
 
 bench-run: sync
 	uv run scripts/run_benchmarks.py \
+		$(if $(CONFIG),--config $(CONFIG),) \
 		$(if $(PROJECT),--project $(PROJECT),) \
+		$(if $(NEW),--new,) \
 		$(if $(RESUME),--resume $(RESUME),)
 
 bench-plot: sync
-	uv run scripts/plot_results.py --metric timing
-	uv run scripts/plot_results.py --metric flops
+	uv run scripts/plot_results.py plot --metric timing
+	uv run scripts/plot_results.py plot --metric flops
 
 bench-list:
 	uv run scripts/plot_results.py list
@@ -109,4 +121,4 @@ sync:
 
 check: format lint typecheck
 
-.PHONY: help bench bench-run bench-plot bench-list export list-backends list-inductor-backends format lint typecheck purge lock sync check
+.PHONY: help bench bench-run bench-plot bench-list export list-backends list-inductor-backends format lint typecheck purge lock sync check NEW

@@ -86,6 +86,38 @@ def _load_completed(events_path: Path) -> set[tuple[str, str, str, int]]:
     return completed
 
 
+def _has_results(run_dir: Path) -> bool:
+    events = run_dir / "run_events.jsonl"
+    if not events.exists():
+        return False
+    with open(events) as f:
+        return any(
+            json.loads(line).get("event") == "result" for line in f if line.strip()
+        )
+
+
+def _resolve_latest_run(runs_dir: Path) -> Path:
+    candidates = []
+    latest_link = runs_dir / "latest"
+    if latest_link.is_symlink() and latest_link.exists():
+        candidates.append(latest_link.resolve())
+    if runs_dir.is_dir():
+        for d in sorted(
+            (d for d in runs_dir.iterdir() if d.is_dir() and d.name != "latest"),
+            key=lambda d: d.stat().st_mtime,
+            reverse=True,
+        ):
+            if d not in candidates:
+                candidates.append(d)
+    for d in candidates:
+        if _has_results(d):
+            return d
+    if candidates:
+        return candidates[0]
+    print("No latest run to resume", file=sys.stderr)
+    raise typer.Exit(code=1)
+
+
 def _load_config(config_path: Path) -> dict:
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
@@ -133,11 +165,15 @@ def run(
         "--project",
         help="Filter backends by project dir (comma-separated, overrides config)",
     ),
+    new: bool = typer.Option(
+        False,
+        "--new",
+        help="Start a new run instead of resuming",
+    ),
     resume: str = typer.Option(
         None,
         "--resume",
-        flag_value="latest",
-        help="Resume a previous run (defaults to latest)",
+        help="Resume a previous run (run ID or 'latest')",
     ),
 ) -> None:
     config_path = Path(config).resolve()
@@ -165,22 +201,45 @@ def run(
             print(f"No matching backends for --project {project}", file=sys.stderr)
             raise typer.Exit(code=1)
 
-    if resume is not None:
-        resume_id = "latest" if resume == "latest" else resume
+    run_dir: Path | None = None
+
+    if not new:
         runs_dir = PROJECT_ROOT / "out" / "runs"
+        resume_id = "latest" if resume is None else resume
         if resume_id == "latest":
-            latest_link = runs_dir / "latest"
-            if latest_link.is_symlink() and latest_link.exists():
-                run_dir = latest_link.resolve()
-            else:
-                print("No latest run to resume", file=sys.stderr)
-                raise typer.Exit(code=1)
+            try:
+                run_dir = _resolve_latest_run(runs_dir)
+            except typer.Exit:
+                if resume is not None:
+                    raise
+                run_dir = None
         else:
-            run_dir = runs_dir / resume_id
-            if not run_dir.is_dir():
+            candidate = runs_dir / resume_id
+            if not candidate.is_dir():
                 print(f"Run {resume_id} not found", file=sys.stderr)
                 raise typer.Exit(code=1)
+            run_dir = candidate
 
+    if run_dir is None:
+        run_id = str(uuid.uuid7())
+        run_dir = PROJECT_ROOT / "out" / "runs" / run_id
+        data_dir = run_dir / "data"
+        images_dir = run_dir / "images"
+        plot_dir = run_dir / "plot"
+        for d in [data_dir, images_dir, plot_dir]:
+            d.mkdir(parents=True, exist_ok=True)
+        events_path = run_dir / "run_events.jsonl"
+        _append_event(
+            events_path,
+            {
+                "event": "started",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        completed = set()
+        existing_results = []
+        print(f"Run {run_id}", file=sys.stderr)
+    else:
         data_dir = run_dir / "data"
         images_dir = run_dir / "images"
         events_path = run_dir / "run_events.jsonl"
@@ -205,25 +264,6 @@ def run(
             f"Resuming run {run_dir.name} — {len(completed)} combos already done",
             file=sys.stderr,
         )
-    else:
-        run_id = str(uuid.uuid7())
-        run_dir = PROJECT_ROOT / "out" / "runs" / run_id
-        data_dir = run_dir / "data"
-        images_dir = run_dir / "images"
-        plot_dir = run_dir / "plot"
-        for d in [data_dir, images_dir, plot_dir]:
-            d.mkdir(parents=True, exist_ok=True)
-        events_path = run_dir / "run_events.jsonl"
-        _append_event(
-            events_path,
-            {
-                "event": "started",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-        completed = set()
-        existing_results = []
-        print(f"Run {run_id}", file=sys.stderr)
 
     results = list(existing_results)
     total = len(image_list) * len(ks_list) * sum(len(v) for _, _, v in backends)
